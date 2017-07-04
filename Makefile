@@ -24,7 +24,7 @@ C_FLAGS		:= -Wall
 KMOD_DIR	:= $(shell pwd)
 
 OBJECTS	:= \
-	lir941r.o \
+	lir941r_main.o \
 
 ccflags-y += $(C_FLAGS)
 
