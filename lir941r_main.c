@@ -1,8 +1,9 @@
 /*
-   lir941r.c
+   lir941r_.c
 	- kernel module entry point
 
    Copyright 2017  Oleg Kutkov <elenbert@gmail.com>
+                   Crimean astrophysical observatory
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -19,6 +20,8 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include "chardev.h"
+#include "lir941r.h"
 
 MODULE_LICENSE("GPL");
 
@@ -27,10 +30,8 @@ MODULE_LICENSE("GPL");
 #define DRIVER_DESCRIPTION "LIR941R encoders interface driver"
 #define DRIVER_COPYRIGHT "Copyright (c) 2017 Oleg Kutkov. Crimean astrophysical observatory"
 
-#define BAR_0	0
-
 static struct pci_device_id lir941r_id_table[] = {
-	{ PCI_DEVICE(0x0F0F, 0x0F0F) },
+	{ PCI_DEVICE(LIR_941_VENDOR_ID_1, LIR_941_PRODUCT_ID_1) },
 	{0,}
 };
 
@@ -59,73 +60,196 @@ static void __exit lir941r_exit(void)
 	pci_unregister_driver(&lir941r_driver);
 }
 
-static int lir941r_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+int read_device_config(struct pci_dev *pdev)
 {
-	u16 vendor, device;
+	u16 vendor, device, status_reg, command_reg;
 
 	pci_read_config_word(pdev, PCI_VENDOR_ID, &vendor);
 	pci_read_config_word(pdev, PCI_DEVICE_ID, &device);
-	printk("The vendor_id is %x, the device_id is %x\n", vendor, device);
 
-	u16 status_reg;
+	printk(KERN_INFO "LIR device vid: 0x%X  pid: 0x%X\n", vendor, device);
+
 	pci_read_config_word(pdev, PCI_STATUS, &status_reg);
 
-	printk("Status reg: %d\n", status_reg);
+	printk(KERN_INFO "LIR device status reg: 0x%X\n", status_reg);
 
-	u16 command_reg;
+
 	pci_read_config_word(pdev, PCI_COMMAND, &command_reg);
 
-	printk("Command reg: %d\n", command_reg | PCI_COMMAND_MEMORY);
+	if (command_reg | PCI_COMMAND_MEMORY) {
+		printk(KERN_INFO "LIR device supports memory access\n");
 
-	int err = pci_enable_device(pdev);
-
-	if (err) {
-		return err;
+		return 0;
 	}
 
-	int bar = pci_select_bars(pdev, IORESOURCE_MEM);
+	printk(KERN_ERR "LIR device doesn't supports memory access!");
 
-	printk("Availale MEM BARs are 0x%x\n", bar);
+	return -1;
+}
 
-	pci_enable_device_mem(pdev);
+void release_device(struct pci_dev *pdev)
+{
+	pci_release_region(pdev, pci_select_bars(pdev, IORESOURCE_MEM));
+	pci_disable_device(pdev);
+}
+
+static int lir941r_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+{
+	int bar, err;	
+	unsigned long mmio_start,mmio_len;
+	struct lir941r_driver *drv_priv;
+
+	if (read_device_config(pdev) < 0) {
+		return -EIO;
+	}
+
+	bar = pci_select_bars(pdev, IORESOURCE_MEM);
+
+	printk(KERN_INFO "LIR device availale MEM BAR are 0x%x\n", bar);
+
+	err = pci_enable_device_mem(pdev);
+
+	if (err) {
+		printk(KERN_ERR "Failed to enable LIR device memory, err: %i\n", err);
+		return err;
+	}
 
 	err = pci_request_region(pdev, bar, DRIVER_NAME);
 
 	if (err) {
+		pci_disable_device(pdev);
 		return err;
 	}
 
-	unsigned long mmio_start, mmio_end, mmio_len, mmio_flags;
+	mmio_start = pci_resource_start(pdev, 0);
+	mmio_len   = pci_resource_len(pdev, 0);
 
-    mmio_start = pci_resource_start(pdev, bar);
-    mmio_end   = pci_resource_end(pdev, bar);
-    mmio_len   = pci_resource_len(pdev, bar);
-    mmio_flags = pci_resource_flags(pdev, bar);
-    pr_info("Resource 0: start at 0x%lx with lenght %lu\n", mmio_start, mmio_len);
+	printk(KERN_INFO "LIR device resource 0: start at 0x%lx with lenght %lu\n", mmio_start, mmio_len);
 
-	void *ioaddr = ioremap(mmio_start, mmio_len);
+	drv_priv = kzalloc(sizeof(struct lir941r_driver), GFP_KERNEL);
 
-	if (!ioaddr) {
-		return 1;
+	if (!drv_priv) {
+		release_device(pdev);
+		return -ENOMEM;
 	}
 
-	 pr_info("Mapped resource 0x%lx to 0x%p\n", mmio_start, ioaddr);
+	drv_priv->hwmem = ioremap(mmio_start, mmio_len);
 
-//	u8 __iomem *ioaddr = pci_ioremap_bar(pdev, 0);
+	if (!drv_priv->hwmem) {
+		release_device(pdev);
+		return -EIO;
+	}
 
-//	if (!ioaddr) {
-//		return 1;
-//	}
+	printk(KERN_INFO "LIR device mapped resource 0x%lx to 0x%p\n", mmio_start, drv_priv->hwmem);
 
-//	writel(ioaddr, 16);
+	create_char_devs();
 
-//	int i = 0;
+	pci_set_drvdata(pdev, drv_priv);
 
-//	for (i = 0; i < 1024; i++) {
-//		u32 rctl = readl(ioaddr + sizeof(u32));
-//		printk("read: %x\n", rctl);
-//	}
+	return 0;
 
+/////
+
+/*	void *iowr = drv_priv->hwmem;
+
+	iowr += sizeof(u32) * 5;
+
+	u16 wval = 0x2; // cycle request, allow ext1-ext4
+
+	iowrite8(wval, iowr); // configure channel 1
+
+	iowr += sizeof(u8);
+
+	iowrite8(wval, iowr); //configure channel 2
+
+
+	wval = 0x0;
+
+	iowr += sizeof(u8);
+
+	iowrite8(wval, iowr); //configure channel 3
+
+	iowr += sizeof(u8);
+
+	iowrite8(wval, iowr); //configure channel 4
+*/
+/////
+/*
+	u32 rctl = ioread32(ioaddr);
+	printk("Channel 1 data: %i\n", rctl);
+
+	ioaddr += sizeof(u32);
+
+	rctl = ioread32(ioaddr);
+	printk("Channel 2 data: %i\n", rctl);
+
+	ioaddr += sizeof(u32);
+
+	rctl = ioread32(ioaddr);
+	printk("Channel 3 data: %i\n", rctl);
+
+	ioaddr += sizeof(u32);
+
+	rctl = ioread32(ioaddr);
+	printk("Channel 4 data: %i\n", rctl);
+
+	ioaddr += sizeof(u32);
+
+	u8 rdr = ioread8(ioaddr);
+
+	printk("Rg status 1: %i\n", rdr);
+
+	rdr += sizeof(u8);
+
+	rdr = ioread8(ioaddr);
+	printk("Rg status 2: %i\n", rdr);
+
+	rdr += sizeof(u8);
+
+	rdr = ioread8(ioaddr);
+	printk("Rg status 3: %i\n", rdr);
+
+	rdr += sizeof(u8);
+
+	rdr = ioread8(ioaddr);
+	printk("Rg status 4: %i\n", rdr);
+
+*/
+//	u32 rctl = ioread8(ioaddr + (sizeof(u32) * 5));
+//	printk("read: %i\n", rctl);
+
+//	rctl = ioread8(ioaddr + (sizeof(u32) * 5) + 1);
+//	printk("read: %i\n", rctl);
+
+//	rctl = ioread8(ioaddr + (sizeof(u32) * 5) + 2);
+//	printk("read: %i\n", rctl);
+
+//	rctl = ioread8(ioaddr + (sizeof(u32) * 5) + 3);
+//	printk("read: %i\n", rctl);
+
+
+//	void *iowraddr = ioaddr + (sizeof(u32) * 5);
+
+//	rctl = readl(ioaddr + 4);
+/*
+	rctl = readl(ioaddr + sizeof(u32));
+	printk("read: %x\n", rctl);
+
+	rctl = readl(ioaddr + sizeof(u32) + sizeof(u32));
+	printk("read: %x\n", rctl);
+
+	rctl = readl(ioaddr + sizeof(u32) + sizeof(u32) + sizeof(u32));
+	printk("read: %x\n", rctl);
+
+	rctl = readl(ioaddr + sizeof(u32) + sizeof(u32) + sizeof(u32) + sizeof(u32));
+	printk("read: %x\n", rctl);
+
+	rctl = readl(ioaddr + sizeof(u32) + sizeof(u32) + sizeof(u32) + sizeof(u32) + sizeof(u32));
+	printk("read: %x\n", rctl);
+
+	rctl = readl(ioaddr + sizeof(u32) + sizeof(u32) + sizeof(u32) + sizeof(u32) + sizeof(u32) + sizeof(u32));
+	printk("read: %x\n", rctl);
+*/
 //	printk("\n");
 
 	return 0;
@@ -133,7 +257,21 @@ static int lir941r_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 static void lir941r_remove(struct pci_dev *pdev)
 {
-	pci_disable_device(pdev);
+	struct lir941r_driver *drv_priv = pci_get_drvdata(pdev);
+
+	destroy_char_devs();
+
+	if (drv_priv) {
+		if (drv_priv->hwmem) {
+			iounmap(drv_priv->hwmem);
+		}
+
+		kfree(drv_priv);
+	}
+
+	release_device(pdev);
+
+	printk("Unloaded %s\n", DRIVER_DESCRIPTION);
 }
 
 module_init(lir941r_init);
