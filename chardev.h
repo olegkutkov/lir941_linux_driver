@@ -17,6 +17,10 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  
  */
 
+#ifndef CHARDEV_H
+#define CHARDEV_H
+
 int create_char_devs(void);
 int destroy_char_devs(void);
 
+#endif
