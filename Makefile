@@ -26,6 +26,7 @@ KMOD_DIR	:= $(shell pwd)
 OBJECTS	:= \
 	lir941r_main.o \
 	chardev.o \
+	lir941r_hw.o \
 
 ccflags-y += $(C_FLAGS)
 
