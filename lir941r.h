@@ -20,6 +20,8 @@
 #ifndef LIR_941_R_H
 #define LIR_941_R_H
 
+#include <linux/types.h>
+
 #define LIR_941_VENDOR_ID_1 0x0F0F
 #define LIR_941_PRODUCT_ID_1 0x0F0F
 
