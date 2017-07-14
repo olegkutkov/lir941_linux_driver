@@ -1,5 +1,5 @@
 /*
-   lir941r_.c
+   lir941r_main.c
 	- kernel module entry point
 
    Copyright 2017  Oleg Kutkov <elenbert@gmail.com>
