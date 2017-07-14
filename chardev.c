@@ -21,6 +21,7 @@
 #include <linux/device.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
+#include <linux/uaccess.h>
 #include <linux/fs.h>
 #include "chardev.h"
 
@@ -115,23 +116,11 @@ static long lirdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 static int lirdev_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
 {
-	char* tmp = "Hello from kernel world!\n"
-
-	
-
 	return 0;
 }
 
 static int lirdev_write(struct file *file, const char __user *buf, size_t count, loff_t *offset)
 {
-	char* tmp;
-
-	tmp = memdup_user(buf, count);
-
-	printk("lirdev writing %s\n", tmp);
-
-	kfree(tmp);
-
 	return count;
 }
 
