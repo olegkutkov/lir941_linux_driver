@@ -151,6 +151,13 @@ static long lirdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		case LIR941_STOP_CHANNEL_POLLING:
 			stop_channel_polling(drv->drv, drv->chnum);
 			break;
+
+		case LIR941_STOP_CHANNEL_ONE_REQUEST:
+			channel_generate_one_req(drv->drv, drv->chnum);
+			break;
+
+		default:
+			break;
 	};
 
 	return 0;
