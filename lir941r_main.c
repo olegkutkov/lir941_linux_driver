@@ -142,7 +142,7 @@ static int lir941r_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	printk(KERN_INFO "LIR device mapped resource 0x%lx to 0x%p\n", mmio_start, drv_priv->hwmem);
 
-	create_char_devs();
+	create_char_devs(drv_priv);
 
 	pci_set_drvdata(pdev, drv_priv);
 
