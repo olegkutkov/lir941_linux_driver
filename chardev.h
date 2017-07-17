@@ -20,7 +20,9 @@
 #ifndef CHARDEV_H
 #define CHARDEV_H
 
-int create_char_devs(void);
+#include "lir941r.h"
+
+int create_char_devs(struct lir941r_driver* drv);
 int destroy_char_devs(void);
 
 #endif

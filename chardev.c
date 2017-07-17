@@ -24,6 +24,8 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include "chardev.h"
+#include "lir941r_user.h"
+#include "lir941r_hw.h"
 
 #define MAX_DEV 4
 #define DEV_MAJOR 89
@@ -44,17 +46,28 @@ static const struct file_operations lirdev_fops = {
 };
 
 struct lir_device_data {
-	void *hw;
 	struct device* lirdev;
 	struct cdev cdev;
 };
 
+struct lir_device_private {
+	uint8_t chnum;
+	struct lir941r_driver* drv;
+};
 
 static int dev_major = 0;
 static struct class *lirclass = NULL;
 static struct lir_device_data lirdev_data[MAX_DEV];
+static struct lir941r_driver* drv_access = NULL;
 
-int create_char_devs(void)
+static int lir941_uevent(struct device *dev, struct kobj_uevent_env *env)
+{
+	add_uevent_var(env, "DEVMODE=%#o", 0666);
+
+	return 0;
+}
+
+int create_char_devs(struct lir941r_driver* drv)
 {
 	int err, i;
 	dev_t dev;
@@ -65,6 +78,8 @@ int create_char_devs(void)
 
 	lirclass = class_create(THIS_MODULE, "lir941r-dev");
 
+	lirclass->dev_uevent = lir941_uevent;
+
 	for (i = 0; i < MAX_DEV; i++) {
 		cdev_init(&lirdev_data[i].cdev, &lirdev_fops);
 		lirdev_data[i].cdev.owner = THIS_MODULE;
@@ -72,6 +87,8 @@ int create_char_devs(void)
 
 		lirdev_data[i].lirdev = device_create(lirclass, NULL, MKDEV(dev_major, i), NULL, "lir941r-%d", i);
 	}
+
+	drv_access = drv;
 
 	return 0;
 }
@@ -93,24 +110,49 @@ int destroy_char_devs(void)
 
 static int lirdev_open(struct inode *inode, struct file *file)
 {
+	struct lir_device_private* lir_priv;
 	unsigned int minor = iminor(inode);
 
 	printk("lirdev open, minor %i\n", minor);
 
-	file->private_data = lirdev_data[minor].hw;
+	lir_priv = kzalloc(sizeof(struct lir_device_private), GFP_KERNEL);
+	lir_priv->drv = drv_access;
+	lir_priv->chnum = minor;
+
+	file->private_data = lir_priv;
 
 	return 0;
 }
 
 static int lirdev_release(struct inode *inode, struct file *file)
 {
-	file->private_data = NULL;
+	struct lir_device_private* priv = file->private_data;
+
+	printk("lirdev release\n");
+
+	kfree(priv);
+
+	priv = NULL;
 
 	return 0;
 }
 
 static long lirdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
+	struct lir_device_private* drv = file->private_data;
+
+	printk("lirdev_ioctl %i\n", cmd);
+
+	switch (cmd) {
+		case LIR941_START_CHANNEL_POLLING:
+			start_channel_polling(drv->drv, drv->chnum);
+			break;
+
+		case LIR941_STOP_CHANNEL_POLLING:
+			stop_channel_polling(drv->drv, drv->chnum);
+			break;
+	};
+
 	return 0;
 }
 
