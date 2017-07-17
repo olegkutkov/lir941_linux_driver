@@ -58,7 +58,10 @@
 /* */
 
 static uint8_t ADAPTER_CHANNEL_MODE = MODE_NORMAL_SSI;
-
+static uint8_t ADAPTER_ALLOW_EXT1 = 1;
+static uint8_t ADAPTER_ALLOW_EXT2 = 1;
+static uint8_t ADAPTER_ALLOW_EXT3 = 1;
+static uint8_t ADAPTER_ALLOW_EXT4 = 1;
 
 
 void set_channel_bit(struct lir941r_driver* drv, uint8_t chnum, uint8_t bit)
@@ -82,31 +85,51 @@ void set_channel_pause_rate(struct lir941r_driver* drv, uint8_t chnum, uint8_t p
 	iowrite16(prate, wr_addr);
 }
 
+static uint8_t create_basic_config_reg(void)
+{
+	uint8_t value = 0x0;
+
+	if (ADAPTER_CHANNEL_MODE != MODE_NORMAL_SSI) {
+		SET_BIT(value, CHREG_CONTROL_MODE);
+	}
+
+	if (ADAPTER_ALLOW_EXT1) {
+		SET_BIT(value, CHREG_EXT1_BIT);
+	}
+
+	if (ADAPTER_ALLOW_EXT2) {
+		SET_BIT(value, CHREG_EXT2_BIT);
+	}
+
+	if (ADAPTER_ALLOW_EXT3) {
+		SET_BIT(value, CHREG_EXT3_BIT);
+	}
+
+	if (ADAPTER_ALLOW_EXT4) {
+		SET_BIT(value, CHREG_EXT4_BIT);
+	}
+
+	// polling and single request is unset by default
+
+	return value;
+}
+
 static void change_channel_polling_mode(struct lir941r_driver* drv, uint8_t chnum, uint8_t start)
 {
-	void* wr_addr, r_addr;
+	void* w_addr;
 	uint8_t reg;
 
-	r_addr = drv->hwmem + CHANNEL_RG_ST_OFFSET(chnum);
+	printk("change_channel_polling_mode %i\n", start);
+
 	w_addr = drv->hwmem + CHANNEL_RG_CTRL_OFFSET(chnum);
 
-	reg = ioread8(read_addr);
-
-	if (CHECK_BIT(reg, CHREG_POLLING_BIT)) {
-		return;
-	}
-
-	if (ADAPTER_CHANNEL_MODE == MODE_NORMAL_SSI) {
-		CLEAR_BIT(reg, CHREG_CONTROL_MODE);
-	} else {
-		SET_BIT(reg, CHREG_CONTROL_MODE);
-	}
+	reg = create_basic_config_reg();
 
 	if (start) {
 		SET_BIT(reg, CHREG_POLLING_BIT);
-	} else {
-		CLEAR_BIT(reg, CHREG_POLLING_BIT);
 	}
+
+	printk("iowrite8 value: 0x%X\n", reg);
 
 	iowrite8(reg, w_addr);
 }
@@ -123,7 +146,20 @@ void stop_channel_polling(struct lir941r_driver* drv, uint8_t chnum)
 
 void channel_generate_one_req(struct lir941r_driver* drv, uint8_t chnum)
 {
-	
+	void* w_addr;
+	uint8_t reg;
+
+	printk("channel_generate_one_reqn");
+
+	w_addr = drv->hwmem + CHANNEL_RG_CTRL_OFFSET(chnum);
+
+	reg = create_basic_config_reg();
+
+	SET_BIT(reg, CHREG_ON_REQ_BIT);
+
+	printk("iowrite8 value: 0x%X\n", reg);
+
+	iowrite8(reg, w_addr);
 }
 
 uint8_t is_channel_polling(struct lir941r_driver* drv, uint8_t chnum)
