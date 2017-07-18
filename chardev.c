@@ -156,6 +156,10 @@ static long lirdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			channel_generate_one_req(drv->drv, drv->chnum);
 			break;
 
+		case LIR941_CHANNEL_DATAWIDTH:
+			set_channel_bit(drv->drv, drv->chnum, (uint8_t)arg);
+			break;
+
 		default:
 			break;
 	};
@@ -165,7 +169,16 @@ static long lirdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 static int lirdev_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
 {
-	return 0;
+	struct lir_device_private* drv = file->private_data;
+	uint32_t data;
+
+	data = get_channel_data(drv->drv, drv->chnum);
+
+	if (copy_to_user(buf, &data, count)) {
+		return -EFAULT;
+	}
+
+	return count;
 }
 
 static int lirdev_write(struct file *file, const char __user *buf, size_t count, loff_t *offset)
