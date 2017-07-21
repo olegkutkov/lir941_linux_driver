@@ -22,11 +22,7 @@
 #include <linux/pci.h>
 #include "chardev.h"
 #include "lir941r.h"
-
-#define DRIVER_NAME "lir941r"
-#define DRIVER_VERSION "0.1"
-#define DRIVER_DESCRIPTION "LIR941R encoders interface driver"
-#define DRIVER_COPYRIGHT "Copyright (c) 2017 Oleg Kutkov. Crimean astrophysical observatory"
+#include "log.h"
 
 static struct pci_device_id lir941r_id_table[] = {
 	{ PCI_DEVICE(LIR_941_VENDOR_ID_1, LIR_941_PRODUCT_ID_1) },
@@ -47,8 +43,8 @@ static struct pci_driver lir941r_driver = {
 
 static int __init lir941r_init(void)
 {
-	printk("Loading %s - version %s\n", DRIVER_DESCRIPTION, DRIVER_VERSION);
-	printk("%s\n", DRIVER_COPYRIGHT);
+	LOG_INFO("Loading %s - version %s\n", DRIVER_DESCRIPTION, DRIVER_VERSION);
+	LOG_INFO("%s\n", DRIVER_COPYRIGHT);
 
 	return pci_register_driver(&lir941r_driver);
 }
@@ -65,24 +61,24 @@ int read_device_config(struct pci_dev *pdev)
 	pci_read_config_word(pdev, PCI_VENDOR_ID, &vendor);
 	pci_read_config_word(pdev, PCI_DEVICE_ID, &device);
 
-	printk(KERN_INFO "LIR device vid: 0x%X  pid: 0x%X\n", vendor, device);
+	LOG_INFO("Device vid: 0x%X  pid: 0x%X\n", vendor, device);
 
 	pci_read_config_word(pdev, PCI_STATUS, &status_reg);
 
-	printk(KERN_INFO "LIR device status reg: 0x%X\n", status_reg);
+	LOG_INFO("Device status reg: 0x%X\n", status_reg);
 
 
 	pci_read_config_word(pdev, PCI_COMMAND, &command_reg);
 
 	if (command_reg | PCI_COMMAND_MEMORY) {
-		printk(KERN_INFO "LIR device supports memory access\n");
+		LOG_INFO("Device supports memory access\n");
 
 		return 0;
 	}
 
-	printk(KERN_ERR "LIR device doesn't supports memory access!");
+	LOG_ERROR("Device doesn't supports memory access!");
 
-	return -1;
+	return -EIO;
 }
 
 void release_device(struct pci_dev *pdev)
@@ -103,12 +99,12 @@ static int lir941r_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	bar = pci_select_bars(pdev, IORESOURCE_MEM);
 
-	printk(KERN_INFO "LIR device availale MEM BAR are 0x%x\n", bar);
+	LOG_INFO("Device availale MEM BAR are 0x%x\n", bar);
 
 	err = pci_enable_device_mem(pdev);
 
 	if (err) {
-		printk(KERN_ERR "Failed to enable LIR device memory, err: %i\n", err);
+		LOG_ERROR("Failed to enable LIR device memory, err: %i\n", err);
 		return err;
 	}
 
@@ -122,7 +118,7 @@ static int lir941r_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	mmio_start = pci_resource_start(pdev, 0);
 	mmio_len   = pci_resource_len(pdev, 0);
 
-	printk(KERN_INFO "LIR device resource 0: start at 0x%lx with lenght %lu\n", mmio_start, mmio_len);
+	LOG_INFO("LIR device resource 0: start at 0x%lx with lenght %lu\n", mmio_start, mmio_len);
 
 	drv_priv = kzalloc(sizeof(struct lir941r_driver), GFP_KERNEL);
 
@@ -138,7 +134,7 @@ static int lir941r_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 		return -EIO;
 	}
 
-	printk(KERN_INFO "LIR device mapped resource 0x%lx to 0x%p\n", mmio_start, drv_priv->hwmem);
+	LOG_INFO("LIR device mapped resource 0x%lx to 0x%p\n", mmio_start, drv_priv->hwmem);
 
 	create_char_devs(drv_priv);
 
@@ -163,7 +159,7 @@ static void lir941r_remove(struct pci_dev *pdev)
 
 	release_device(pdev);
 
-	printk("Unloaded %s\n", DRIVER_DESCRIPTION);
+	LOG_INFO("Unloaded %s\n", DRIVER_DESCRIPTION);
 }
 
 MODULE_LICENSE("GPL");
