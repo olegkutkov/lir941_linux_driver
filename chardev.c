@@ -141,8 +141,6 @@ static long lirdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct lir_device_private* drv = file->private_data;
 
-	printk("lirdev_ioctl %i\n", cmd);
-
 	switch (cmd) {
 		case LIR941_START_CHANNEL_POLLING:
 			start_channel_polling(drv->drv, drv->chnum);
@@ -160,8 +158,16 @@ static long lirdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			set_channel_bit(drv->drv, drv->chnum, (uint8_t)arg);
 			break;
 
-		default:
+		case LIR941_CHANNEL_SPEED:
+			set_channel_clk(drv->drv, drv->chnum, (uint16_t)arg);
 			break;
+
+		case LIR941_CHANNEL_PAUSE:
+			set_channel_pause_rate(drv->drv, drv->chnum, (uint16_t)arg);
+			break;
+
+		default:
+			return -EINVAL;
 	};
 
 	return 0;
