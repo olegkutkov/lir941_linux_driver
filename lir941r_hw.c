@@ -68,19 +68,25 @@ void set_channel_bit(struct lir941r_driver* drv, uint8_t chnum, uint8_t bit)
 {
 	void* wr_addr = drv->hwmem + CHANNEL_DATA_BIT_OFFSET(chnum);
 
-	iowrite32(bit, wr_addr);
+	printk("lirdevice channel %i  set data width = %i\n", chnum, bit);
+
+	iowrite8(bit, wr_addr);
 }
 
-void set_channel_clk(struct lir941r_driver* drv, uint8_t chnum, uint8_t clk)
+void set_channel_clk(struct lir941r_driver* drv, uint8_t chnum, uint16_t clk)
 {
 	void* wr_addr = drv->hwmem + CHANNEL_CLK_RATE_OFFSET(chnum);
+
+	printk("lirdevice channel %i  set clock div = %i\n", chnum, clk);
 
 	iowrite16(clk, wr_addr);
 }
 
-void set_channel_pause_rate(struct lir941r_driver* drv, uint8_t chnum, uint8_t prate)
+void set_channel_pause_rate(struct lir941r_driver* drv, uint8_t chnum, uint16_t prate)
 {
 	void* wr_addr = drv->hwmem + CHANNEL_PAUSE_RATE_OFFSET(chnum);
+
+	printk("lirdevice channel %i  set pause rate = %i\n", chnum, prate);
 
 	iowrite16(prate, wr_addr);
 }
@@ -89,24 +95,17 @@ static void wait_for_transaction_finish(struct lir941r_driver* drv, uint8_t chnu
 {
 	void* r_addr;
 	uint8_t reg;
-	int i;
 
 	r_addr = drv->hwmem + CHANNEL_RG_ST_OFFSET(chnum);
 
+	while (1) {
+		reg = ioread8(r_addr);
 
-	for (i = 0; i < 25; i++) {
-
-	reg = ioread8(r_addr);
-
-	printk("status reg: 0x%X\n", reg);
-
-
-	if (!CHECK_BIT(reg, CHREG_STATUS_TR_ACTIVE_BIT)) {
-		break;
-	} else {
-		printk("Waiting for transaction finish...\n");
-	}
-
+		if (!CHECK_BIT(reg, CHREG_STATUS_TR_ACTIVE_BIT)) {
+			break;
+		} else {
+			printk("Waiting for transaction finish...\n");
+		}
 	}
 }
 
@@ -114,17 +113,11 @@ static void wait_for_pause_in_tx(struct lir941r_driver* drv, uint8_t chnum)
 {
 	void* r_addr;
 	uint8_t reg;
-	int i;
 
 	r_addr = drv->hwmem + CHANNEL_RG_ST_OFFSET(chnum);
 
-
-//	for (i = 0; i < 25; i++) {
 	while(1) {
-
 		reg = ioread8(r_addr);
-
-		printk("status reg: 0x%X\n", reg);
 
 		if (!CHECK_BIT(reg, CHREG_STATUS_TR_PAUSE_BIT)) {
 			break;
@@ -169,8 +162,6 @@ static void change_channel_polling_mode(struct lir941r_driver* drv, uint8_t chnu
 	void* w_addr;
 	uint8_t reg;
 
-	printk("change_channel_polling_mode %i\n", start);
-
 	w_addr = drv->hwmem + CHANNEL_RG_CTRL_OFFSET(chnum);
 
 	reg = create_basic_config_reg();
@@ -179,7 +170,7 @@ static void change_channel_polling_mode(struct lir941r_driver* drv, uint8_t chnu
 		SET_BIT(reg, CHREG_POLLING_BIT);
 	}
 
-	printk("iowrite8 value: 0x%X\n", reg);
+	printk("config reg value: 0x%X\n", reg);
 
 	iowrite8(reg, w_addr);
 }
@@ -199,19 +190,15 @@ void channel_generate_one_req(struct lir941r_driver* drv, uint8_t chnum)
 	void* w_addr;
 	uint8_t reg;
 
-	printk("channel_generate_one_reqion\n");
-
 	w_addr = drv->hwmem + CHANNEL_RG_CTRL_OFFSET(chnum);
 
 	reg = create_basic_config_reg();
 
 	SET_BIT(reg, CHREG_ON_REQ_BIT);
 
-	printk("iowrite8 value: 0x%X\n", reg);
+	wait_for_transaction_finish(drv, chnum);
 
 	iowrite8(reg, w_addr);
-
-//	wait_for_transaction_finish(drv, chnum);
 }
 
 uint8_t is_channel_polling(struct lir941r_driver* drv, uint8_t chnum)
@@ -228,11 +215,15 @@ uint8_t is_channel_polling(struct lir941r_driver* drv, uint8_t chnum)
 
 uint32_t get_channel_data(struct lir941r_driver* drv, uint8_t chnum)
 {
+	uint32_t res;
 	void* read_addr = drv->hwmem + CHANNEL_DATA_OFFSET(chnum);
 
-//	wait_for_transaction_finish(drv, chnum);
 	wait_for_pause_in_tx(drv, chnum);
 
-	return ioread32(read_addr);
+	res = ioread32(read_addr);
+
+	printk("raw data from reg: 0x%X\n", res);
+
+	return res;
 }
 
