@@ -23,8 +23,6 @@
 #include "chardev.h"
 #include "lir941r.h"
 
-MODULE_LICENSE("GPL");
-
 #define DRIVER_NAME "lir941r"
 #define DRIVER_VERSION "0.1"
 #define DRIVER_DESCRIPTION "LIR941R encoders interface driver"
@@ -167,6 +165,11 @@ static void lir941r_remove(struct pci_dev *pdev)
 
 	printk("Unloaded %s\n", DRIVER_DESCRIPTION);
 }
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Oleg Kutkov <elenbert@gmail.com>");
+MODULE_DESCRIPTION(DRIVER_DESCRIPTION);
+MODULE_VERSION(DRIVER_VERSION);
 
 module_init(lir941r_init);
 module_exit(lir941r_exit);
