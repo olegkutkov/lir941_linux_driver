@@ -23,8 +23,8 @@
 #include "lir941r.h"
 
 void set_channel_bit(struct lir941r_driver* drv, uint8_t chnum, uint8_t bit);
-void set_channel_clk(struct lir941r_driver* drv, uint8_t chnum, uint8_t clk);
-void set_channel_pause_rate(struct lir941r_driver* drv, uint8_t chnum, uint8_t prate);
+void set_channel_clk(struct lir941r_driver* drv, uint8_t chnum, uint16_t clk);
+void set_channel_pause_rate(struct lir941r_driver* drv, uint8_t chnum, uint16_t prate);
 
 void start_channel_polling(struct lir941r_driver* drv, uint8_t chnum);
 void stop_channel_polling(struct lir941r_driver* drv, uint8_t chnum);
