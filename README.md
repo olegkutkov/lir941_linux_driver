@@ -30,6 +30,6 @@ After sucessfully loading you can found new char devices in you /dev directory, 
 
 Please checkout this simple testing program: https://github.com/olegkutkov/lir941_test_util
 
-Tested on Linux kernel version 3.16
+Tested on Linux kernel versions: 3.13, 3.16 x86 and x86_64
 
 If you encountered some problems - feel free to contact me.
