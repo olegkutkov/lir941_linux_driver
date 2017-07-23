@@ -40,11 +40,11 @@
  */
 static void __log_func(const char* lvl, const char* fmt, ...)
 {
-		va_list args;
-		va_start(args, fmt);
-		printk("%s [%s]: ", DRIVER_NAME, lvl);
-		vprintk(fmt, args);
-		va_end(args);
+	va_list args;
+	va_start(args, fmt);
+	printk("%s [%s]: ", DRIVER_NAME, lvl);
+	vprintk(fmt, args);
+	va_end(args);
 }
 
 #ifndef LOG_INFO
