@@ -113,8 +113,6 @@ static int lirdev_open(struct inode *inode, struct file *file)
 	struct lir_device_private* lir_priv;
 	unsigned int minor = iminor(inode);
 
-	printk("lirdev open, minor %i\n", minor);
-
 	lir_priv = kzalloc(sizeof(struct lir_device_private), GFP_KERNEL);
 	lir_priv->drv = drv_access;
 	lir_priv->chnum = minor;
@@ -127,8 +125,6 @@ static int lirdev_open(struct inode *inode, struct file *file)
 static int lirdev_release(struct inode *inode, struct file *file)
 {
 	struct lir_device_private* priv = file->private_data;
-
-	printk("lirdev release\n");
 
 	kfree(priv);
 
