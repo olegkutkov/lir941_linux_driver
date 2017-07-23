@@ -33,8 +33,8 @@
 static int lirdev_open(struct inode *inode, struct file *file);
 static int lirdev_release(struct inode *inode, struct file *file);
 static long lirdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
-static int lirdev_read(struct file *file, char __user *buf, size_t count, loff_t *offset);
-static int lirdev_write(struct file *file, const char __user *buf, size_t count, loff_t *offset);
+static ssize_t lirdev_read(struct file *file, char __user *buf, size_t count, loff_t *offset);
+static ssize_t lirdev_write(struct file *file, const char __user *buf, size_t count, loff_t *offset);
 
 static const struct file_operations lirdev_fops = {
 	.owner      = THIS_MODULE,
@@ -173,7 +173,7 @@ static long lirdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	return 0;
 }
 
-static int lirdev_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
+static ssize_t lirdev_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
 {
 	struct lir_device_private* drv = file->private_data;
 	uint32_t data;
@@ -187,7 +187,7 @@ static int lirdev_read(struct file *file, char __user *buf, size_t count, loff_t
 	return count;
 }
 
-static int lirdev_write(struct file *file, const char __user *buf, size_t count, loff_t *offset)
+static ssize_t lirdev_write(struct file *file, const char __user *buf, size_t count, loff_t *offset)
 {
 	return count;
 }
