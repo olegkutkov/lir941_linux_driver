@@ -5,7 +5,7 @@ This device driver supports LIR941R pci encoders interface.
 
 Hardware vendor: http://www.skbis.ru/
 
-Author: Oleg Kutkov <elenbert@gmail.com>, Crimean astrophysical observatory.
+Author: Oleg Kutkov <contact@olegkutkov.me>, Crimean astrophysical observatory.
 
 Thanks skbis for device specification and support!
 
