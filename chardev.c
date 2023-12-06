@@ -3,7 +3,7 @@
 	- kernel module character devices implementation
 
    Copyright 2017  Oleg Kutkov <elenbert@gmail.com>
-                   Crimean astrophysical observatory
+				   Crimean astrophysical observatory
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -14,11 +14,16 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/cdev.h>
+#include <linux/version.h>
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,9,16)
+#include <linux/device/class.h>
+#else
 #include <linux/device.h>
+#endif
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -76,7 +81,11 @@ int create_char_devs(struct lir941r_driver* drv)
 
 	dev_major = MAJOR(dev);
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,9,16)
+	lirclass = class_create("lir941r-dev");
+#else
 	lirclass = class_create(THIS_MODULE, "lir941r-dev");
+#endif
 
 	lirclass->dev_uevent = lir941_uevent;
 
@@ -187,4 +196,3 @@ static ssize_t lirdev_write(struct file *file, const char __user *buf, size_t co
 {
 	return count;
 }
-
