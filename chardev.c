@@ -60,7 +60,7 @@ static struct class *lirclass = NULL;
 static struct lir_device_data lirdev_data[MAX_DEV];
 static struct lir941r_driver* drv_access = NULL;
 
-static int lir941_uevent(struct device *dev, struct kobj_uevent_env *env)
+static int lir941_uevent(const struct device *dev, struct kobj_uevent_env *env)
 {
 	add_uevent_var(env, "DEVMODE=%#o", 0666);
 
